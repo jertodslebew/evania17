@@ -141,9 +141,11 @@
     transition:transform .35s ease;
   }
   .gallery-track img{
-    width:100%; height:100%;
+    width:100%;
+    height:100%;
     flex-shrink:0;
     object-fit:cover;
+    display:block;
     -webkit-user-drag:none;
     user-select:none;
   }
@@ -634,75 +636,210 @@
   const SUPABASE_KEY = 'sb_publishable_or_UHQcB21vlwUPthMfuhw_6M6WAjhx';
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // ============ GALLERY (foto showcase) ============
-  // Tambahkan / hapus / ganti foto di sini — carousel otomatis menyesuaikan.
-  const GALLERY_PHOTOS = [
-    { src: 'https://gbffqhztedwcalvugtdb.supabase.co/storage/v1/object/public/image/SCL_7827_11zon.jpg', alt: 'Foto 1' },
-    { src: 'https://gbffqhztedwcalvugtdb.supabase.co/storage/v1/object/public/image/SCL_7812_11zon.jpg', alt: 'Foto 2' },
-    { src: 'https://gbffqhztedwcalvugtdb.supabase.co/storage/v1/object/public/image/SCL_7846_11zon.jpg', alt: 'Foto 3' },
-    { src: 'https://gbffqhztedwcalvugtdb.supabase.co/storage/v1/object/public/image/SCL_7851_11zon.jpg', alt: 'Foto 4' },
-    { src: 'https://gbffqhztedwcalvugtdb.supabase.co/storage/v1/object/public/image/SCL_7865_11zon.jpeg', alt: 'Foto 5' },
-    { src: 'https://gbffqhztedwcalvugtdb.supabase.co/storage/v1/object/public/image/SCL_7878_11zon.jpg', alt: 'Foto 6' },
-    { src: 'https://gbffqhztedwcalvugtdb.supabase.co/storage/v1/object/public/image/SCL_7882_11zon.jpg', alt: 'Foto 7' },
-    { src: 'https://gbffqhztedwcalvugtdb.supabase.co/storage/v1/object/public/image/SCL_7894_11zon.jpg', alt: 'Foto 8' },
-    { src: 'https://gbffqhztedwcalvugtdb.supabase.co/storage/v1/object/public/image/SCL_7950_11zon.jpg', alt: 'Foto 9' },
-    { src: 'https://gbffqhztedwcalvugtdb.supabase.co/storage/v1/object/public/image/SCL_7967_11zon.jpg', alt: 'Foto 10' },
-    { src: 'https://gbffqhztedwcalvugtdb.supabase.co/storage/v1/object/public/image/SCL_8142_11zon.jpg', alt: 'Foto 11' },
-    { src: 'https://gbffqhztedwcalvugtdb.supabase.co/storage/v1/object/public/image/SCL_8155_11zon.jpg', alt: 'Foto 12' },
-    { src: 'https://gbffqhztedwcalvugtdb.supabase.co/storage/v1/object/public/image/SCL_8177_11zon.jpg', alt: 'Foto 13' },
-    { src: 'https://gbffqhztedwcalvugtdb.supabase.co/storage/v1/object/public/image/SCL_8223_11zon.jpg', alt: 'Foto 14' },
-  ];
+const SUPABASE_IMAGE_BASE =
+    'https://gbffqhztedwcalvugtdb.supabase.co/storage/v1/render/image/public/image';
 
-  let galleryIndex = 0;
-  const galleryTrack = document.getElementById('gallery-track');
-  const galleryDots = document.getElementById('gallery-dots');
+const GALLERY_PHOTOS = [
+    { file: 'SCL_7827_11zon.jpg', alt: 'Foto 1' },
+    { file: 'SCL_7812_11zon.jpg', alt: 'Foto 2' },
+    { file: 'SCL_7846_11zon.jpg', alt: 'Foto 3' },
+    { file: 'SCL_7851_11zon.jpg', alt: 'Foto 4' },
+    { file: 'SCL_7865_11zon.jpeg', alt: 'Foto 5' },
+    { file: 'SCL_7878_11zon.jpg', alt: 'Foto 6' },
+    { file: 'SCL_7882_11zon.jpg', alt: 'Foto 7' },
+    { file: 'SCL_7894_11zon.jpg', alt: 'Foto 8' },
+    { file: 'SCL_7950_11zon.jpg', alt: 'Foto 9' },
+    { file: 'SCL_7967_11zon.jpg', alt: 'Foto 10' },
+    { file: 'SCL_8142_11zon.jpg', alt: 'Foto 11' },
+    { file: 'SCL_8155_11zon.jpg', alt: 'Foto 12' },
+    { file: 'SCL_8177_11zon.jpg', alt: 'Foto 13' },
+    { file: 'SCL_8223_11zon.jpg', alt: 'Foto 14' }
+];
 
-  function renderGallery(){
-    galleryTrack.innerHTML = GALLERY_PHOTOS.map(p =>
-      `<img src="${p.src}" alt="${p.alt || ''}" loading="lazy">`
-    ).join('');
-    galleryDots.innerHTML = GALLERY_PHOTOS.map((_, i) =>
-      `<div class="dot${i === 0 ? ' active' : ''}" data-i="${i}"></div>`
-    ).join('');
-    galleryDots.querySelectorAll('.dot').forEach(dot => {
-      dot.addEventListener('click', () => goToSlide(Number(dot.dataset.i)));
-    });
-    updateGallery();
-  }
+let galleryIndex = 0;
 
-  function updateGallery(){
+const galleryTrack = document.getElementById('gallery-track');
+const galleryDots = document.getElementById('gallery-dots');
+const galleryEl = document.getElementById('gallery');
+
+
+// Buat URL gambar Supabase yang sudah di-resize
+function getGalleryUrl(file) {
+    return `${SUPABASE_IMAGE_BASE}/${encodeURIComponent(file)}?width=800&quality=70`;
+}
+
+
+// Load gambar hanya ketika diperlukan
+function loadGalleryImage(index, priority = false) {
+    const img = galleryTrack.querySelector(
+        `img[data-index="${index}"]`
+    );
+
+    if (!img) return;
+
+    // Sudah pernah diload
+    if (img.dataset.loaded === 'true') return;
+
+    const photo = GALLERY_PHOTOS[index];
+
+    if (!photo) return;
+
+    img.src = getGalleryUrl(photo.file);
+    img.dataset.loaded = 'true';
+
+    if (priority) {
+        img.fetchPriority = 'high';
+    }
+}
+
+
+// Preload gambar berikutnya supaya perpindahan terasa cepat
+function preloadNearbyImages(index) {
     const total = GALLERY_PHOTOS.length;
-    if(total === 0) return;
-    galleryIndex = (galleryIndex + total) % total;
-    galleryTrack.style.transform = `translateX(-${galleryIndex * 100}%)`;
-    galleryDots.querySelectorAll('.dot').forEach((dot, i) => {
-      dot.classList.toggle('active', i === galleryIndex);
+
+    if (total <= 1) return;
+
+    const nextIndex = (index + 1) % total;
+
+    loadGalleryImage(nextIndex, false);
+}
+
+
+// Render gallery
+function renderGallery() {
+
+    galleryTrack.innerHTML = GALLERY_PHOTOS.map((p, i) => `
+        <img
+            data-index="${i}"
+            data-loaded="false"
+            alt="${p.alt || ''}"
+            draggable="false"
+            decoding="async"
+        >
+    `).join('');
+
+
+    galleryDots.innerHTML = GALLERY_PHOTOS.map((_, i) =>
+        `<div class="dot${i === 0 ? ' active' : ''}" data-i="${i}"></div>`
+    ).join('');
+
+
+    galleryDots.querySelectorAll('.dot').forEach(dot => {
+        dot.addEventListener('click', () => {
+            goToSlide(Number(dot.dataset.i));
+        });
     });
-  }
 
-  function goToSlide(i){ galleryIndex = i; updateGallery(); }
-  function nextSlide(){ galleryIndex++; updateGallery(); }
-  function prevSlide(){ galleryIndex--; updateGallery(); }
 
-  document.getElementById('gallery-next').addEventListener('click', nextSlide);
-  document.getElementById('gallery-prev').addEventListener('click', prevSlide);
+    // FOTO PERTAMA:
+    // langsung download dan prioritaskan
+    loadGalleryImage(0, true);
 
-  // swipe support
-  const galleryEl = document.getElementById('gallery');
-  let touchStartX = 0, touchDeltaX = 0;
-  galleryEl.addEventListener('touchstart', (e) => {
+
+    // Siapkan foto kedua di background
+    // sehingga ketika user menekan next biasanya sudah siap
+    setTimeout(() => {
+        preloadNearbyImages(0);
+    }, 300);
+
+
+    updateGallery();
+}
+
+
+// Update posisi carousel
+function updateGallery() {
+
+    const total = GALLERY_PHOTOS.length;
+
+    if (total === 0) return;
+
+    galleryIndex = (galleryIndex + total) % total;
+
+    galleryTrack.style.transform =
+        `translateX(-${galleryIndex * 100}%)`;
+
+
+    galleryDots.querySelectorAll('.dot').forEach((dot, i) => {
+        dot.classList.toggle(
+            'active',
+            i === galleryIndex
+        );
+    });
+
+
+    // Load foto yang sedang dibuka
+    loadGalleryImage(galleryIndex, true);
+
+
+    // Load foto berikutnya
+    preloadNearbyImages(galleryIndex);
+}
+
+
+// Pergi ke slide tertentu
+function goToSlide(i) {
+    galleryIndex = i;
+    updateGallery();
+}
+
+
+// Slide berikutnya
+function nextSlide() {
+    galleryIndex++;
+    updateGallery();
+}
+
+
+// Slide sebelumnya
+function prevSlide() {
+    galleryIndex--;
+    updateGallery();
+}
+
+
+// Tombol next / previous
+document
+    .getElementById('gallery-next')
+    .addEventListener('click', nextSlide);
+
+document
+    .getElementById('gallery-prev')
+    .addEventListener('click', prevSlide);
+
+
+// ============ SWIPE SUPPORT ============
+
+let touchStartX = 0;
+let touchDeltaX = 0;
+
+galleryEl.addEventListener('touchstart', (e) => {
     touchStartX = e.touches[0].clientX;
     touchDeltaX = 0;
-  }, { passive: true });
-  galleryEl.addEventListener('touchmove', (e) => {
-    touchDeltaX = e.touches[0].clientX - touchStartX;
-  }, { passive: true });
-  galleryEl.addEventListener('touchend', () => {
-    if(touchDeltaX > 40) prevSlide();
-    else if(touchDeltaX < -40) nextSlide();
-  });
+}, { passive: true });
 
-  renderGallery();
+
+galleryEl.addEventListener('touchmove', (e) => {
+    touchDeltaX =
+        e.touches[0].clientX - touchStartX;
+}, { passive: true });
+
+
+galleryEl.addEventListener('touchend', () => {
+
+    if (touchDeltaX > 40) {
+        prevSlide();
+    }
+
+    else if (touchDeltaX < -40) {
+        nextSlide();
+    }
+
+});
+
+
+renderGallery();
+
 
   // ============ COLOR PALETTE (dress code) ============
   // Tambahkan / ganti warna sesuai tema dress code kamu di sini.
