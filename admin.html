@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Rekap Sweet Seventeenth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Karla:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --night:#211A2E; --paper:#FFF9F2; --gold:#CBA135; --gold-soft:#E7CD86;
+    --rose:#E38B8B; --teal:#4C7C74; --ink:#2A2233; --ink-soft:#6b6178;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; background:var(--night); color:var(--paper);
+    font-family:'Karla', sans-serif; display:flex; align-items:center; justify-content:center;
+    padding:20px;
+  }
+  h1{ font-family:'Fraunces', serif; font-weight:600; }
+  .mono{ font-family:'Space Mono', monospace; }
+  .box{ width:100%; max-width:440px; }
+
+  /* login gate */
+  .gate{ text-align:center; }
+  .gate h1{ font-size:1.6rem; margin-bottom:6px; }
+  .gate p{ color:#cfc6df; font-size:.9rem; margin-bottom:24px; }
+  .gate input{
+    width:100%; padding:14px; border-radius:10px; border:1.5px solid rgba(231,205,134,.4);
+    background:rgba(255,255,255,.06); color:var(--paper); font-size:1rem; text-align:center;
+    letter-spacing:.1em;
+  }
+  .gate input:focus{ outline:2px solid var(--gold); }
+  .gate button{
+    width:100%; margin-top:12px; padding:14px; border:none; border-radius:10px;
+    background:var(--gold); color:var(--night); font-weight:700; cursor:pointer; font-size:.95rem;
+  }
+  .gate .err{ color:var(--rose); font-size:.85rem; margin-top:10px; min-height:16px; }
+
+  /* dashboard */
+  .dash{ display:none; width:100%; max-width:640px; }
+  .dash-header{ text-align:center; margin-bottom:28px; }
+  .dash-header .tag{ font-family:'Space Mono',monospace; font-size:.68rem; letter-spacing:.3em; text-transform:uppercase; color:var(--gold-soft); }
+  .dash-header h1{ font-size:1.8rem; margin-top:6px; }
+
+  .recap-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
+  .recap-cell{ background:rgba(255,255,255,.06); border:1px solid rgba(231,205,134,.3); border-radius:14px; padding:20px; text-align:center; }
+  .recap-num{ font-family:'Space Mono',monospace; font-size:2.2rem; font-weight:700; }
+  .recap-num.hadir{ color:var(--teal); }
+  .recap-num.tidak{ color:var(--rose); }
+  .recap-label{ font-size:.68rem; letter-spacing:.12em; text-transform:uppercase; color:#cfc6df; margin-top:4px; }
+
+  .list-card{ background:rgba(255,255,255,.05); border:1px solid rgba(231,205,134,.25); border-radius:14px; padding:18px; margin-bottom:14px; }
+  .list-card h3{ font-family:'Karla',sans-serif; font-size:.78rem; letter-spacing:.1em; text-transform:uppercase; color:#cfc6df; margin-bottom:12px; }
+  .name-row{ display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed rgba(255,255,255,.1); font-size:.9rem; }
+  .name-row:last-child{ border-bottom:none; }
+  .name-row .t{ font-family:'Space Mono',monospace; font-size:.7rem; color:#9d93ad; }
+  .empty{ color:#9d93ad; font-size:.85rem; text-align:center; padding:8px 0; }
+  .refresh{
+    display:block; width:100%; margin-top:6px; padding:12px; border:1px solid rgba(231,205,134,.4);
+    background:transparent; color:var(--gold-soft); border-radius:10px; cursor:pointer; font-weight:700; font-size:.85rem;
+  }
+  .note{ text-align:center; color:#9d93ad; font-size:.75rem; margin-top:20px; }
+</style>
+</head>
+<body>
+
+  <div class="box">
+    <!-- GATE -->
+    <div class="gate" id="gate">
+      <h1>Admin Page</h1>
+      <p>Enter Access Code</p>
+      <input type="password" id="pw" placeholder="Access Code" autocomplete="off">
+      <button id="pw-submit">Login</button>
+      <div class="err" id="pw-err"></div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="dash" id="dash">
+      <div class="dash-header">
+        <span class="tag">Admin</span>
+        <h1>Dashboard</h1>
+      </div>
+
+      <div class="recap-grid">
+        <div class="recap-cell"><div class="recap-num hadir" id="n-hadir">0</div><div class="recap-label">Attending</div></div>
+        <div class="recap-cell"><div class="recap-num tidak" id="n-tidak">0</div><div class="recap-label">Not attending</div></div>
+      </div>
+
+      <div class="list-card">
+        <h3>Attending List</h3>
+        <div id="list-hadir"><div class="empty">No data.</div></div>
+      </div>
+
+      <div class="list-card">
+        <h3>Not attending list</h3>
+        <div id="list-tidak"><div class="empty">No data.</div></div>
+      </div>
+
+      <button class="refresh" id="refresh-btn">Refresh data</button>
+      <p class="note">Don't share this link to your guests</p>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = 'https://gbffqhztedwcalvugtdb.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_or_UHQcB21vlwUPthMfuhw_6M6WAjhx';
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // Ganti kode akses ini sesuka kamu sebelum deploy.
+  const ADMIN_CODE = 'adminevania';
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+  function fmtTime(iso){
+    try{
+      return new Date(iso).toLocaleString('id-ID', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+    }catch(e){ return ''; }
+  }
+
+  document.getElementById('pw-submit').addEventListener('click', tryLogin);
+  document.getElementById('pw').addEventListener('keydown', (e) => { if(e.key === 'Enter') tryLogin(); });
+
+  function tryLogin(){
+    const val = document.getElementById('pw').value;
+    if(val === ADMIN_CODE){
+      document.getElementById('gate').style.display = 'none';
+      document.getElementById('dash').style.display = 'block';
+      sessionStorage.setItem('sweet17-admin-ok', '1');
+      loadData();
+    }else{
+      document.getElementById('pw-err').textContent = 'Kode salah, coba lagi.';
+    }
+  }
+
+  // tetap login selama sesi browser masih terbuka
+  if(sessionStorage.getItem('sweet17-admin-ok') === '1'){
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('dash').style.display = 'block';
+    loadData();
+  }
+
+  async function loadData(){
+    const { data, error } = await sb.from('rsvps').select('*').order('created_at', { ascending: false });
+    if(error){ console.error(error); return; }
+
+    const hadir = data.filter(r => r.attend === 'hadir');
+    const tidak = data.filter(r => r.attend === 'tidak');
+
+    document.getElementById('n-hadir').textContent = hadir.length;
+    document.getElementById('n-tidak').textContent = tidak.length;
+
+    const renderList = (el, list) => {
+      if(list.length === 0){ el.innerHTML = '<div class="empty">Belum ada data.</div>'; return; }
+      el.innerHTML = list.map(r => `
+        <div class="name-row"><span>${escapeHtml(r.name)}</span><span class="t">${fmtTime(r.created_at)}</span></div>
+      `).join('');
+    };
+    renderList(document.getElementById('list-hadir'), hadir);
+    renderList(document.getElementById('list-tidak'), tidak);
+  }
+
+  document.getElementById('refresh-btn').addEventListener('click', loadData);
+</script>
+
+</body>
+</html>
