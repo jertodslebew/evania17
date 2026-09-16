@@ -636,8 +636,11 @@
   const SUPABASE_KEY = 'sb_publishable_or_UHQcB21vlwUPthMfuhw_6M6WAjhx';
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// ====== FIX (versi gratis): pakai endpoint "object/public" biasa,
+// BUKAN "render/image" (fitur image transformation itu berbayar/Pro-only
+// di Supabase dan akan gagal di paket Free).
 const SUPABASE_IMAGE_BASE =
-    'https://gbffqhztedwcalvugtdb.supabase.co/storage/v1/render/image/public/image';
+    'https://gbffqhztedwcalvugtdb.supabase.co/storage/v1/object/public/image';
 
 const GALLERY_PHOTOS = [
     { file: 'SCL_7827_11zon.jpg', alt: 'Foto 1' },
@@ -663,9 +666,9 @@ const galleryDots = document.getElementById('gallery-dots');
 const galleryEl = document.getElementById('gallery');
 
 
-// Buat URL gambar Supabase yang sudah di-resize
+// Buat URL gambar Supabase (object publik biasa, gratis, tanpa resize server-side)
 function getGalleryUrl(file) {
-    return `${SUPABASE_IMAGE_BASE}/${encodeURIComponent(file)}?width=800&quality=70`;
+    return `${SUPABASE_IMAGE_BASE}/${encodeURIComponent(file)}`;
 }
 
 
